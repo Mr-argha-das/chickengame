@@ -1,4 +1,4 @@
-import { seedDefaultAdmin } from "./utils/seedAdmin.js";
+import "dotenv/config";
 import express from "express";
 import cookieParser from "cookie-parser";
 import cors from "cors";
@@ -11,9 +11,21 @@ const app = express();
 //   key_secret: process.env.RAZORPAY_API_SECRET,
 // });
 
+const allowedOrigins = (process.env.CORS_ORIGIN ||
+  "http://localhost:5173,https://infinity-games.cc,https://www.infinity-games.cc")
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
 app.use(
   cors({
-    origin: process.env.CORS_ORIGIN,
+    origin(origin, callback) {
+      if (!origin || allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      return callback(new Error(`CORS blocked for origin: ${origin}`));
+    },
     credentials: true,
   })
 );
@@ -27,7 +39,6 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 app.use(cookieParser());
-seedDefaultAdmin();
 
 // //Routes import
 import userRouter from "./routes/user.routes.js";

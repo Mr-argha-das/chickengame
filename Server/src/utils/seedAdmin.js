@@ -3,6 +3,12 @@ import { User } from "../models/user.model.js"
 
 export const seedDefaultAdmin = async () => {
     const defaultAdminEmail = process.env.DEFAULT_ADMIN_EMAIL;
+    const defaultAdminPassword = process.env.DEFAULT_ADMIN_PASSWORD;
+
+    if (!defaultAdminEmail || !defaultAdminPassword) {
+        console.log("ℹ️ Default admin seed skipped: DEFAULT_ADMIN_EMAIL or DEFAULT_ADMIN_PASSWORD is missing.");
+        return;
+    }
 
     // Check if the admin already exists
     const existingUser = await User.findOne({ email: defaultAdminEmail });
@@ -29,7 +35,7 @@ export const seedDefaultAdmin = async () => {
         fullName: "Default Admin",
         email: defaultAdminEmail,
         phoneNumber: "+911234567890",
-        password: process.env.DEFAULT_ADMIN_PASSWORD,
+        password: defaultAdminPassword,
         isVerified: true,
         role: "admin"
     });

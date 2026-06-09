@@ -1,4 +1,4 @@
-import dotenv from "dotenv";
+import "dotenv/config";
 import connectDB from "./db/index.js";
 import http from "http";
 import { Server } from "socket.io";
@@ -8,13 +8,11 @@ import aviatorSocketHandler from "./sockets/aviator.socket.js";
 import { initializeGameTimer } from "./controllers/colorGame.controller.js";
 import { initializeColorGameTimer } from "./controllers/aviatorGame.controller.js";
 import { seedDefaultBanner } from "./utils/seedDefaultBanner.js";
+import { seedDefaultAdmin } from "./utils/seedAdmin.js";
 import { createInterface } from "readline";
 import { TelegramClient } from "telegram";
 import { StringSession } from "telegram/sessions/index.js";
 import config from "./utils/config.js";
-dotenv.config({
-  path: "./.env",
-});
 
 const server = http.createServer(app);
 
@@ -91,7 +89,6 @@ const prompt = (query) =>
     } catch (e) {
       console.error("❌ Telegram Connection Failed:", e.message);
       rl.close();
-      process.exit(1);
     }
   } else {
     try {
@@ -100,7 +97,6 @@ const prompt = (query) =>
     } catch (e) {
       console.error("❌ Telegram Reconnection Failed:", e.message);
       rl.close();
-      process.exit(1);
     }
   }
   // Database + Server
@@ -136,6 +132,7 @@ app.get("/my-channels", async (req, res) => {
 
 connectDB()
   .then(async () => {
+    await seedDefaultAdmin();
     await seedDefaultBanner();
     initializeGameTimer(io);
     initializeColorGameTimer(io);
