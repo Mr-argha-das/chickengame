@@ -2,7 +2,6 @@ import React, { useState } from "react";
 import FormInput from "../components/FormInput";
 import PhoneInput from "../components/PhoneInput";
 import PasswordInput from "../components/PasswordInput";
-import OTPVerificationModal from "../components/OTPVerificationModel";
 import { countryCodes } from "../utils/countryCodes";
 import { registerUser } from "../utils/registerUser";
 import { Link } from "react-router-dom";
@@ -26,10 +25,6 @@ const Signup = () => {
   const [touched, setTouched] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitStatus, setSubmitStatus] = useState(null);
-  const [showOTPModal, setShowOTPModal] = useState(false);
-  const [registrationData, setRegistrationData] = useState(null);
-
-  console.log("registrationData", registrationData);
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
@@ -172,24 +167,22 @@ const Signup = () => {
         console.log(result);
 
         if (result) {
-          // Store registration data for OTP verification
-          setRegistrationData({
-            userId: result.userId || result.id || result.data?._id,
-            email: formData.email,
-            phone: formData.phone,
-            password: formData.password,
-            ref_by: refId,
-          });
-
-          // Show OTP verification modal
-          setShowOTPModal(true);
-
           setSubmitStatus({
             type: "success",
-            message:
-              "Registration successful! Please verify your email and phone number.",
+            message: "Registration successful! You can now sign in.",
             data: result,
           });
+
+          setFormData({
+            name: "",
+            email: "",
+            phone: "",
+            password: "",
+            confirmPassword: "",
+            ref_by: refId || "",
+          });
+          setErrors({});
+          setTouched({});
         } else {
           setSubmitStatus({
             type: "error",
@@ -213,30 +206,6 @@ const Signup = () => {
     }
 
     setIsSubmitting(false);
-  };
-
-  const handleOTPVerificationSuccess = (result) => {
-    setSubmitStatus({
-      type: "success",
-      message: "Account verified successfully! You can now sign in.",
-      data: result,
-    });
-
-    // Reset form after successful verification
-    setFormData({
-      name: "",
-      email: "",
-      phone: "",
-      password: "",
-      confirmPassword: "",
-    });
-    setErrors({});
-    setTouched({});
-    setRegistrationData(null);
-  };
-
-  const handleCloseOTPModal = () => {
-    setShowOTPModal(false);
   };
 
   return (
@@ -444,18 +413,6 @@ const Signup = () => {
           </p>
         </div>
       </div>
-
-      {/* OTP Verification Modal */}
-      {showOTPModal && registrationData && (
-        <OTPVerificationModal
-          isOpen={showOTPModal}
-          onClose={handleCloseOTPModal}
-          userId={registrationData.userId}
-          userEmail={registrationData.email}
-          password={registrationData.password}
-          onVerificationSuccess={handleOTPVerificationSuccess}
-        />
-      )}
     </div>
   );
 };

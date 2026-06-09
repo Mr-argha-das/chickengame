@@ -121,6 +121,7 @@ const registerUser = asyncHandler(async (req, res) => {
     email,
     password,
     phoneNumber,
+    isVerified: true,
     ref_id: generateReferralId(),
     ref_by: ref_by || null,
   });
@@ -138,24 +139,6 @@ const registerUser = asyncHandler(async (req, res) => {
     }
   }
 
-  // Create OTP
-  const emailOTP = generateOTP();
-  await otpLogs.create({
-    userId: user._id,
-    emailOTP,
-    expiresAt: new Date(Date.now() + 10 * 60 * 1000),
-    verified: false,
-  });
-
-  // Send OTP email (with error catch so it doesn't break registration)
-  try {
-    await sendEmail(email, emailOTP);
-  } catch (err) {
-    console.log("❌ Failed to send OTP email:", err.message);
-    await User.findByIdAndDelete(user._id);
-    throw new apiError(500, "Failed to send OTP email. Please try again.");
-  }
-
   const createdUser = await User.findById(user._id).select(
     "-password -refreshToken"
   );
@@ -166,7 +149,7 @@ const registerUser = asyncHandler(async (req, res) => {
 
   return res
     .status(201)
-    .json(new apiResponse(201, createdUser, "✅ User registered Successfully"));
+    .json(new apiResponse(201, createdUser, "✅ User registered successfully. You can login now."));
 });
 
 const createReferralLink = asyncHandler(async (req, res) => {
