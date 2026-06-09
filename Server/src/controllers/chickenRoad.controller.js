@@ -7,7 +7,9 @@ import { apiResponse } from "../utils/apiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 
 const startGame = asyncHandler(async (req, res) => {
-    const { betAmount, gameType, userId, difficulty } = req.body;
+    const { betAmount, difficulty } = req.body;
+    const gameType = "chicken";
+    const userId = req.user._id;
 
     if (!betAmount || betAmount < 10) {
         throw new apiError(400, "Invalid bet amount");
@@ -87,8 +89,22 @@ const startGame = asyncHandler(async (req, res) => {
         gameType,
         betAmount,
         multipliers,
+        currentStepIndex: multipliers[0] === 0.0 ? 0 : 1,
+        isCrashed: multipliers[0] === 0.0,
         roundId
     });
+
+    if (multipliers[0] === 0.0) {
+        await GameHistory.create({
+            userId,
+            gameType,
+            result: "loss",
+            betAmount,
+            payoutAmount: 0,
+            win: false,
+            roundId: roundId?.toString() || null
+        });
+    }
 
     return res.status(201).json(
         new apiResponse(201, {
@@ -165,7 +181,7 @@ const goToNextStep = asyncHandler(async (req, res) => {
 });
 
 const stopGame = asyncHandler(async (req, res) => {
-    const { userId, payout, betAmount } = req.body;
+    const userId = req.user._id;
 
     // 1. Get active session
     const session = await UserGameSession.findOne({
@@ -177,6 +193,13 @@ const stopGame = asyncHandler(async (req, res) => {
     if (!session) {
         throw new apiError(400, "No active session to stop");
     }
+
+    const payoutIndex = session.currentStepIndex - 1;
+    if (payoutIndex < 0 || session.multipliers[payoutIndex] === 0.0) {
+        throw new apiError(400, "No safe step available to cash out");
+    }
+
+    const payout = Number((session.betAmount * session.multipliers[payoutIndex]).toFixed(2));
 
     // 3. Update wallet
     const user = await User.findById(userId);
@@ -193,7 +216,7 @@ const stopGame = asyncHandler(async (req, res) => {
             userId,
             gameType: session.gameType,
             result: "loss",
-            betAmount: betAmount,
+            betAmount: session.betAmount,
             payoutAmount: 0,
             win: false,
             roundId: session.roundId?.toString() || null
@@ -204,7 +227,7 @@ const stopGame = asyncHandler(async (req, res) => {
             userId,
             gameType: session.gameType,
             result: "win",
-            betAmount: betAmount,
+            betAmount: session.betAmount,
             payoutAmount: payout,
             win: true,
             roundId: session.roundId?.toString() || null

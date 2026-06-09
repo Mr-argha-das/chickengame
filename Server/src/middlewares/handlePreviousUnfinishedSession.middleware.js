@@ -3,7 +3,11 @@ import { GameHistory } from "../models/gameHistory.model.js";
 
 const handlePreviousUnfinishedSession = async (req, res, next) => {
     try {
-        const userId = req.userId;
+        const userId = req.user?._id;
+
+        if (!userId) {
+            return next();
+        }
 
         const session = await UserGameSession.findOne({
             userId,

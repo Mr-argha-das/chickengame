@@ -22,19 +22,19 @@ const sendEmail = async (email, otp) => {
   console.log(process.env.MAIL_USER, process.env.MAIL_PASSWORD);
   try {
     const mailOptions = {
-      from: `"Chicken Road" <${process.env.MAIL_USER}>`,
+      from: `"Infinity games" <${process.env.MAIL_USER}>`,
       to: email,
-      subject: "Your Chicken Road OTP Code",
+      subject: "Your Infinity games OTP Code",
       html: `
       <div style="font-family: Arial, sans-serif; background-color: #f4f4f4; padding: 30px;">
         <div style="max-width: 600px; margin: auto; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
           <div style="background-color: #111827; padding: 20px; text-align: center;">
-            <h1 style="color: #ffffff; margin: 0;">Chicken Road</h1>
+            <h1 style="color: #ffffff; margin: 0;">Infinity games</h1>
           </div>
           <div style="padding: 30px;">
             <h2 style="color: #111827;">Your One-Time Password (OTP)</h2>
             <p style="font-size: 16px; color: #4b5563;">
-              Use the following OTP to verify your identity and continue using Chicken Road.
+              Use the following OTP to verify your identity and continue using Infinity games.
             </p>
             <div style="font-size: 32px; font-weight: bold; color: #10b981; margin: 20px 0; text-align: center;">
               ${otp}
@@ -71,7 +71,7 @@ const client = twilio(
 const sendSMS = async (phoneNumber, otp) => {
   try {
     const result = await client.messages.create({
-      body: `Your Chicken Road OTP is ${otp}`,
+      body: `Your Infinity games OTP is ${otp}`,
       from: process.env.TWILIO_PHONE_NUMBER,
       to: phoneNumber,
     });

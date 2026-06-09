@@ -25,3 +25,16 @@ export const verifyJWT = asyncHandler(async (req, res, next) => {
         throw new apiError(401, error?.message || "Invalid Access Token")
     }
 })
+
+export const authorizeRoles = (...roles) =>
+    asyncHandler(async (req, res, next) => {
+        if (!req.user) {
+            throw new apiError(401, "Unauthorized request")
+        }
+
+        if (!roles.includes(req.user.role)) {
+            throw new apiError(403, "Forbidden request")
+        }
+
+        next()
+    })
