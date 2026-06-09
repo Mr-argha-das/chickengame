@@ -1,8 +1,8 @@
-import axios from 'axios';
+import axiosInstance from '../utils/axiosInstance';
 
 export const fetchBalance = async (userId) => {
     try {
-        const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/v1/users/balance/${userId}`);
+        const response = await axiosInstance.get(`/api/v1/users/balance/${userId}`);
         return response.data; // { balance: ... }
     } catch (error) {
         console.error('Error fetching balance:', error.response?.data || error.message);

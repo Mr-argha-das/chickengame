@@ -1,15 +1,18 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import { fetchBalance } from '../services/currentBalance'; // Your axios fetch
+import { getStoredUser } from '../utils/storage';
 
 const BalanceContext = createContext();
 
 export const useBalance = () => useContext(BalanceContext);
 
 export const BalanceProvider = ({ children }) => {
-  const user = JSON.parse(localStorage.getItem("user"));
+  const user = getStoredUser();
   const [balance, setBalance] = useState(0);
 
   const loadBalance = async () => {
+    if (!user?._id) return;
+
     try {
       const data = await fetchBalance(user._id);
       setBalance(data.balance);
@@ -23,7 +26,16 @@ export const BalanceProvider = ({ children }) => {
     if (user?._id) {
       loadBalance();
     }
-  }, []);
+
+    const handleFocus = () => {
+      if (user?._id) {
+        loadBalance();
+      }
+    };
+
+    window.addEventListener("focus", handleFocus);
+    return () => window.removeEventListener("focus", handleFocus);
+  }, [user?._id]);
 
   return (
     <BalanceContext.Provider value={{ balance, setBalance, loadBalance }}>

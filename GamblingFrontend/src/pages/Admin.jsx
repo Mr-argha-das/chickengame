@@ -15,9 +15,10 @@ import ReferAmount from "../components/admin/ReferAmount";
 import AdminForm from "../components/admin/addNotification";
 import AddTelegramAmount from "../components/admin/AddTelegramAmount";
 import Banners from "../components/admin/Banners";
+import { getStoredUser } from "../utils/storage";
 const Admin = () => {
   const [selectField, setSelectField] = useState("transaction");
-  const user = JSON.parse(localStorage.getItem("user")) || {};
+  const user = getStoredUser() || {};
 
   useEffect(() => {
     if (!user || user.role !== "admin") {

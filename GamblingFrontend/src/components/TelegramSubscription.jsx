@@ -1,6 +1,7 @@
 import axios from "axios";
 import React, { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { getStoredUser } from "../utils/storage";
 
 const API = `${import.meta.env.VITE_API_URL}/api/v1/telegram-amount`;
 
@@ -16,8 +17,8 @@ const TelegramSubscription = () => {
   const { gameName } = useParams();
   const navigate = useNavigate();
   const [qrCodes, setQrCodes] = useState([]);
-  const user = JSON.parse(localStorage.getItem("user"));
-  const userId = user._id;
+  const user = getStoredUser();
+  const userId = user?._id;
   // Fetch all telegram amounts
   console.log("amount", amount);
   const [teleAmount, setAmounts] = useState([]);

@@ -11,6 +11,7 @@ import {
 import WinDialog from "./winningDiloagbox.jsx";
 import { useBalance } from "../../context/BalanceContext";
 import Timer from "../../pages/Timer.jsx";
+import { getStoredUser, safeJsonParse } from "../../utils/storage";
 
 const GameBoard = () => {
   const { currentRound, timeLeft, lastResult } = useSocket();
@@ -29,7 +30,7 @@ const GameBoard = () => {
 
   console.log("Time Left", timeLeft);
 
-  const user = JSON.parse(localStorage.getItem("user"));
+  const user = getStoredUser();
   const userId = user?._id;
 
   // ✅ Jab lastResult change ho to data save karo aur popup dikhao
@@ -84,12 +85,12 @@ const GameBoard = () => {
     }
   };
   function getAllBets() {
-    return JSON.parse(localStorage.getItem("betBox")) || [];
+    return safeJsonParse(localStorage.getItem("betBox"), []);
   }
 
   function saveBetData(newBet) {
     // 'betBox' key ke andar array me saare bets save honge
-    const existing = JSON.parse(localStorage.getItem("betBox")) || [];
+    const existing = safeJsonParse(localStorage.getItem("betBox"), []);
 
     // Example: same period aane par update karna
     const updated = [...existing];

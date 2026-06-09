@@ -27,6 +27,7 @@ import RankingPage from "./components/RankingPage";
 import QRCode from "./components/admin/QRCode";
 import { ReferEarn } from "./components/ReferEarn";
 import ProfilePage from "./components/withdrawal/ProfilePage";
+import { getStoredUser } from "./utils/storage";
 
 const App = () => {
   useEffect(() => {
@@ -51,7 +52,7 @@ const App = () => {
     }
   }, []);
 
-  const user = JSON.parse(localStorage.getItem("user"));
+  const user = getStoredUser();
   const userId = user?._id;
 
   return (

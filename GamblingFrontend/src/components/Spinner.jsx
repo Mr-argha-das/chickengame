@@ -1,6 +1,7 @@
 import axios from "axios";
 import React, { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { getStoredUser } from "../utils/storage";
 
 const API = `${import.meta.env.VITE_API_URL}/api/v1/spinner`;
 
@@ -12,8 +13,8 @@ const Spinner = () => {
   const canvasRef = useRef(null);
   const [prizes, setPrizes] = useState([]);
   const [transactions, setTransactions] = useState([]);
-  const user = JSON.parse(localStorage.getItem("user"));
-  const userId = user._id;
+  const user = getStoredUser();
+  const userId = user?._id;
 
   // ✅ Fetch prizes from backend
   const fetchPrizes = async () => {

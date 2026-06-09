@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
+import { getStoredUser } from "../utils/storage";
 
 export const ReferEarn = ({ isOpen, onClose }) => {
   const [referralLink, setReferralLink] = useState("");
   const [loading, setLoading] = useState(false);
-  const userId = JSON.parse(localStorage.getItem("user")) || {};
+  const userId = getStoredUser() || {};
 
   const handleGenerateLink = async () => {
     try {

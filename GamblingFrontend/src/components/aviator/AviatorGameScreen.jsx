@@ -7,6 +7,7 @@ import Header from "./Header";
 import { useDeviceType } from "../../hooks/deviceType";
 
 import { useBalance } from "../../context/BalanceContext";
+import { getStoredUser } from "../../utils/storage";
 
 export default function AviatorGameScreen() {
   const {
@@ -24,7 +25,7 @@ export default function AviatorGameScreen() {
 
   const device = useDeviceType();
 
-  const user = JSON.parse(localStorage.getItem("user") || "{}");
+  const user = getStoredUser() || {};
   const userId = user?._id;
   const crashPoints = gameHistory ? gameHistory.slice(1) : [];
 

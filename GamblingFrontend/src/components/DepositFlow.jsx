@@ -1,5 +1,5 @@
-import axios from "axios";
 import React, { useEffect, useState } from "react";
+import axiosInstance from "../utils/axiosInstance";
 
 const DepositFlow = () => {
   const [method, setMethod] = useState("UPI"); // default
@@ -10,15 +10,13 @@ const DepositFlow = () => {
   const [showPopup, setShowPopup] = useState(false);
   const [qrCodes, setQrCodes] = useState([]);
   const [qrCryptoCodes, setQrCryptoCodes] = useState([]);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const quickAmounts = [100, 200, 300, 500, 1000, 2000, 3000, 5000];
 
-  const user = JSON.parse(localStorage.getItem("user"));
-  const userId = user._id;
-
-  console.log(qrCodes);
   const details = {
-    payNumber,
+    payNumber: payNumber.trim(),
     ...(method !== "UPI" && { network, cryptoType }),
   };
 
@@ -57,31 +55,48 @@ const DepositFlow = () => {
   }, []);
 
   const handleSubmit = async (e) => {
-    console.log("inside submit");
-    e.preventDefault();
-    try {
-      // Replace this with your actual API endpoint
-      const response = await axios.post(
-        `${import.meta.env.VITE_API_URL}/api/v1/wallet/deposit`,
-        {
-          userId,
-          amount,
-          method,
-          details,
-          remarks: "Payment request for INR",
-        }
+    e?.preventDefault();
+    setErrorMessage("");
+
+    const depositAmount = Number(amount);
+    if (!depositAmount || depositAmount < 100 || depositAmount > 5000) {
+      setErrorMessage("Please enter an amount between 100 and 5000.");
+      return;
+    }
+
+    if (!payNumber.trim()) {
+      setErrorMessage(
+        method === "UPI"
+          ? "Please enter the UPI transaction ID."
+          : "Please enter the crypto transaction hash."
       );
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      await axiosInstance.post("/api/v1/wallet/deposit", {
+        amount: depositAmount,
+        method,
+        details,
+        remarks: "Payment request for INR",
+      });
       setShowPopup(true); // show popup
 
       // Reset all states
       setMethod("UPI");
-      setAmount("");
+      setAmount(200);
       setPayNumber("");
       setCryptoType("usdt");
       setNetwork("erc20");
     } catch (error) {
-      console.error("Error submitting withdrawal:", error);
-      // Optionally show error feedback
+      console.error("Error submitting deposit:", error);
+      setErrorMessage(
+        error?.response?.data?.message ||
+          "Deposit submit nahi hua. Please login dobara karke try karein."
+      );
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -265,12 +280,19 @@ const DepositFlow = () => {
         {amount && (method !== "Crypto" ? renderPayInput() : renderPayInput())}
 
         {/* Final Submit */}
+        {errorMessage && (
+          <p className="w-full rounded-md border border-[#9C1137] bg-[#3d1017] px-3 py-2 text-sm text-red-200">
+            {errorMessage}
+          </p>
+        )}
+
         {amount && payNumber && (
           <button
             onClick={handleSubmit}
-            className="w-full mt-4 cursor-pointer bg-gradient-to-b shadow-xs shadow-[#9C1137] from-[#9C1137] via-[#9C1137] to-black text-white py-2 rounded-md"
+            disabled={isSubmitting}
+            className="w-full mt-4 cursor-pointer bg-gradient-to-b shadow-xs shadow-[#9C1137] from-[#9C1137] via-[#9C1137] to-black text-white py-2 rounded-md disabled:cursor-not-allowed disabled:opacity-60"
           >
-            Submit Deposit
+            {isSubmitting ? "Submitting..." : "Submit Deposit"}
           </button>
         )}
       </div>

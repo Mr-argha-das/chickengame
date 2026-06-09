@@ -1,23 +1,27 @@
-import axios from "axios";
 import { ListCollapse } from "lucide-react";
 import React, { useState, useEffect } from "react";
+import axiosInstance from "../../utils/axiosInstance";
 
 const Deposite = () => {
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filterMethod, setFilterMethod] = useState("upi"); // Filter state for 'upi' or 'crypto'
+  const [errorMessage, setErrorMessage] = useState("");
 
   // Fetch transaction history from API
   const fetchTransactionHistory = async () => {
     setLoading(true);
+    setErrorMessage("");
     try {
-      const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/api/v1/wallet/history/deposit`
-      );
-      const data = await response.json();
-      setTransactions(data.data.deposit); // Adjust according to the response structure
+      const response = await axiosInstance.get("/api/v1/wallet/history/deposit");
+      setTransactions(response.data?.data?.deposit || []);
     } catch (error) {
       console.error("Error fetching transaction history:", error);
+      setTransactions([]);
+      setErrorMessage(
+        error?.response?.data?.message ||
+          "Deposit history load nahi hui. Admin login dobara karke try karein."
+      );
     } finally {
       setLoading(false);
     }
@@ -35,11 +39,10 @@ const Deposite = () => {
     userId,
     amount
   ) => {
+    setErrorMessage("");
     try {
-      const response = await axios.put(
-        `${
-          import.meta.env.VITE_API_URL
-        }/api/v1/wallet/update-deposite-transaction-status`,
+      const response = await axiosInstance.put(
+        "/api/v1/wallet/update-deposite-transaction-status",
         {
           status,
           id: transactionId,
@@ -61,6 +64,10 @@ const Deposite = () => {
       }
     } catch (error) {
       console.error("Error updating status:", error);
+      setErrorMessage(
+        error?.response?.data?.message ||
+          "Deposit status update nahi hua. Admin login dobara karke try karein."
+      );
     }
   };
 
@@ -92,6 +99,11 @@ const Deposite = () => {
       <h2 className="text-2xl font-bold text-center mb-6 text-gray-200">
         Deposite History
       </h2>
+      {errorMessage && (
+        <div className="mb-4 rounded-md border border-red-700 bg-red-950 px-3 py-2 text-center text-sm text-red-200">
+          {errorMessage}
+        </div>
+      )}
 
       {/* Filter buttons */}
       <div className="mb-6 flex justify-center gap-4">
