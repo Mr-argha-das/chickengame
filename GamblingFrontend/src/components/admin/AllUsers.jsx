@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import axios from "axios";
+import axiosInstance from "../../utils/axiosInstance";
 import { Edit, Save, Trash } from "lucide-react"; // For edit/save/trash icons
 import GameBets from "./GameBets";
 
@@ -29,9 +29,7 @@ const AllUsers = () => {
   const fetchUsers = async () => {
     setLoading(true);
     try {
-      const response = await axios.get(
-        `${import.meta.env.VITE_API_URL}/api/v1/users/`
-      );
+      const response = await axiosInstance.get("/api/v1/users/");
       setUsers(response.data.users);
       setError(null);
     } catch (err) {
@@ -58,10 +56,7 @@ const AllUsers = () => {
     try {
       const userData = { ...updatedUser };
 
-      await axios.put(
-        `${import.meta.env.VITE_API_URL}/api/v1/users/${editUserId}`,
-        userData
-      );
+      await axiosInstance.put(`/api/v1/users/${editUserId}`, userData);
       setEditUserId(null); // Exit edit mode
       fetchUsers(); // Refresh the list after saving
     } catch (err) {
