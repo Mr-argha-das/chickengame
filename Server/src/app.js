@@ -35,6 +35,7 @@ import otpRouter from "./routes/otp.routes.js";
 import walletRouter from "./routes/wallet.routes.js";
 import adminRouter from "./routes/admin.routes.js";
 import chickenGameRouter from "./routes/chickenRoad.routes.js";
+import colorGameRouter from "./routes/ColorGame.routes.js";
 import paymentRouter from "./routes/payment.routes.js";
 import telegramRoute from "./routes/telegramBot.routes.js";
 import qrRoute from "./routes/qr.code.routes.js";
@@ -44,6 +45,7 @@ import referAmount from "./routes/refer.amount.routes.js";
 
 import notificationRouter from "./routes/notification.routes.js";
 import telegramAmount from "./routes/telegram.amount.routes.js";
+import bannerRouter from "./routes/banner.routes.js";
 
 app.use("/api/v1/notification", notificationRouter);
 // //Routes Declaration
@@ -52,6 +54,7 @@ app.use("/api/v1/otp", otpRouter);
 app.use("/api/v1/wallet", walletRouter);
 app.use("/api/v1/admin", adminRouter);
 app.use("/api/v1/chicken-road", chickenGameRouter);
+app.use("/api/v1/color", colorGameRouter);
 app.use("/api/v1/upi", paymentRouter);
 app.use("/api/v1/telegram", telegramRoute);
 app.use("/api/v1/qrcode", qrRoute);
@@ -59,5 +62,6 @@ app.use("/api/v1/qrcodecrypto", qrRouteCrypto);
 app.use("/api/v1/spinner", SpinnerPriceRoute);
 app.use("/api/v1/refer-amount", referAmount);
 app.use("/api/v1/telegram-amount", telegramAmount);
+app.use("/api/v1/banners", bannerRouter);
 
 export { app };

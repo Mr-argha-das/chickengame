@@ -121,6 +121,7 @@ const registerUser = asyncHandler(async (req, res) => {
     email,
     password,
     phoneNumber,
+    isVerified: true,
     ref_id: generateReferralId(),
     ref_by: ref_by || null,
   });
@@ -138,24 +139,6 @@ const registerUser = asyncHandler(async (req, res) => {
     }
   }
 
-  // Create OTP
-  const emailOTP = generateOTP();
-  await otpLogs.create({
-    userId: user._id,
-    emailOTP,
-    expiresAt: new Date(Date.now() + 10 * 60 * 1000),
-    verified: false,
-  });
-
-  // Send OTP email (with error catch so it doesn't break registration)
-  try {
-    await sendEmail(email, emailOTP);
-  } catch (err) {
-    console.log("❌ Failed to send OTP email:", err.message);
-    await User.findByIdAndDelete(user._id);
-    throw new apiError(500, "Failed to send OTP email. Please try again.");
-  }
-
   const createdUser = await User.findById(user._id).select(
     "-password -refreshToken"
   );
@@ -166,7 +149,7 @@ const registerUser = asyncHandler(async (req, res) => {
 
   return res
     .status(201)
-    .json(new apiResponse(201, createdUser, "✅ User registered Successfully"));
+    .json(new apiResponse(201, createdUser, "✅ User registered successfully. You can login now."));
 });
 
 const createReferralLink = asyncHandler(async (req, res) => {
@@ -208,7 +191,13 @@ const loginUser = asyncHandler(async (req, res) => {
     throw new apiError(404, "User does not exist");
   }
 
-  const isPasswordValid = user.password === password;
+  let isPasswordValid = await user.isPasswordCorrect(password);
+
+  if (!isPasswordValid && user.password === password) {
+    isPasswordValid = true;
+    user.password = password;
+    await user.save();
+  }
 
   if (!isPasswordValid) {
     throw new apiError(401, "Invalid user credentials");
@@ -310,17 +299,17 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
       secure: false,
     };
 
-    const { accessToken, newRefreshToken } =
+    const { accessToken, refreshToken } =
       await generateAccessAndRefreshToken(user._id);
 
     return res
       .status(200)
       .cookie("accessToken", accessToken, options)
-      .cookie("refreshtoken", newRefreshToken, options)
+      .cookie("refreshToken", refreshToken, options)
       .json(
         new apiResponse(
           200,
-          { accessToken, refreshToken: newRefreshToken },
+          { accessToken, refreshToken },
           "Access token refreshed"
         )
       );
@@ -429,6 +418,13 @@ const getVisibleGames = asyncHandler(async (req, res) => {
 
 const getCurrentBalance = asyncHandler(async (req, res) => {
   const userId = req.params.userId;
+
+  if (
+    req.user.role === "user" &&
+    req.user._id.toString() !== userId.toString()
+  ) {
+    throw new apiError(403, "Forbidden request");
+  }
 
   try {
     const user = await User.findById(userId).select("walletBalance");

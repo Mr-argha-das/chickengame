@@ -69,7 +69,6 @@ const addMoneyToWallet = asyncHandler(async (req, res) => {
       {
         transaction: walletTxn,
         walletBalance: user.walletBalance,
-        ...(converted && { converted }),
       },
       isPaid
         ? `✅ ₹${amount} added to wallet`
@@ -81,21 +80,19 @@ const addMoneyToWallet = asyncHandler(async (req, res) => {
 const requestWithdrawal = asyncHandler(async (req, res) => {
   try {
     const {
-      userId,
       amount,
       method,
-      status, // optional, default is 'pending'
-      adminVerified, // optional, default false
       details, // object containing transaction-specific details
       remarks,
     } = req.body;
+    const userId = req.user._id;
 
     // 1. Validate input
     if (!amount || amount <= 0) {
       throw new apiError(400, "Invalid amount");
     }
 
-    if (!userId || !amount || !method) {
+    if (!amount || !method) {
       return res.status(400).json({ message: "Required fields missing" });
     }
 
@@ -117,8 +114,8 @@ const requestWithdrawal = asyncHandler(async (req, res) => {
       type: "withdrawal",
       amount,
       method,
-      status, // will fallback to default if undefined
-      adminVerified, // will fallback to default if undefined
+      status: "pending",
+      adminVerified: false,
       details: details || {},
       remarks: remarks || [],
     });
@@ -136,6 +133,9 @@ const requestWithdrawal = asyncHandler(async (req, res) => {
     );
   } catch (error) {
     console.error("Error creating wallet transaction:", error);
+    if (error.statusCode) {
+      return res.status(error.statusCode).json({ message: error.message });
+    }
     res.status(500).json({ message: "Server error" });
   }
 });
@@ -195,8 +195,7 @@ const getAllUsersTransactionHistory = asyncHandler(async (req, res) => {
 
 const updateWalletTransactionStatus = async (req, res) => {
   try {
-    const { status, id, userId, amount } = req.body;
-    console.log(userId);
+    const { status, id } = req.body;
 
     // Validate status input if provided
     const validStatuses = [
@@ -228,23 +227,26 @@ const updateWalletTransactionStatus = async (req, res) => {
       },
     };
 
-    // Update the transaction
+    const transaction = await WalletTransaction.findById(id);
+    if (!transaction) {
+      return res.status(404).json({ message: "Transaction not found" });
+    }
+
+    if (
+      transaction.type === "withdrawal" &&
+      status === "rejected" &&
+      transaction.status !== "rejected"
+    ) {
+      const user = await User.findById(transaction.userId);
+      user.walletBalance += transaction.amount;
+      await user.save();
+    }
+
     const updatedTransaction = await WalletTransaction.findByIdAndUpdate(
       id,
       updateFields,
       { new: true }
     );
-
-    if (status === "rejected") {
-      const user = await User.findById(userId);
-      user.walletBalance += amount;
-      user.save();
-    }
-
-    // If transaction is not found, return an error
-    if (!updatedTransaction) {
-      return res.status(404).json({ message: "Transaction not found" });
-    }
 
     // Return the updated transaction
     res.status(200).json(updatedTransaction);
@@ -404,8 +406,7 @@ const updateTelegramDepositeTransactionStatus = async (req, res) => {
 
 const updateDepositeTransactionStatus = async (req, res) => {
   try {
-    const { status, id, userId, amount } = req.body;
-    console.log(userId);
+    const { status, id } = req.body;
 
     // Validate status input if provided
     const validStatuses = [
@@ -437,23 +438,26 @@ const updateDepositeTransactionStatus = async (req, res) => {
       },
     };
 
-    // Update the transaction
+    const transaction = await WalletTransaction.findById(id);
+    if (!transaction) {
+      return res.status(404).json({ message: "Transaction not found" });
+    }
+
+    if (
+      transaction.type === "deposit" &&
+      status === "approved" &&
+      transaction.status !== "approved"
+    ) {
+      const user = await User.findById(transaction.userId);
+      user.walletBalance += transaction.amount;
+      await user.save();
+    }
+
     const updatedTransaction = await WalletTransaction.findByIdAndUpdate(
       id,
       updateFields,
       { new: true }
     );
-
-    if (status === "approved") {
-      const user = await User.findById(userId);
-      user.walletBalance += amount;
-      user.save();
-    }
-
-    // If transaction is not found, return an error
-    if (!updatedTransaction) {
-      return res.status(404).json({ message: "Transaction not found" });
-    }
 
     // Return the updated transaction
     res.status(200).json(updatedTransaction);
@@ -468,21 +472,19 @@ const updateDepositeTransactionStatus = async (req, res) => {
 const requestDeposite = asyncHandler(async (req, res) => {
   try {
     const {
-      userId,
       amount,
       method,
-      status, // optional, default is 'pending'
-      adminVerified, // optional, default false
       details, // object containing transaction-specific details
       remarks,
     } = req.body;
+    const userId = req.user._id;
 
     // 1. Validate input
     if (!amount || amount <= 0) {
       throw new apiError(400, "Invalid amount");
     }
 
-    if (!userId || !amount || !method) {
+    if (!amount || !method) {
       return res.status(400).json({ message: "Required fields missing" });
     }
 
@@ -497,8 +499,8 @@ const requestDeposite = asyncHandler(async (req, res) => {
       type: "deposit",
       amount,
       method,
-      status, // will fallback to default if undefined
-      adminVerified, // will fallback to default if undefined
+      status: "pending",
+      adminVerified: false,
       details: details || {},
       remarks: remarks || [],
     });
@@ -517,6 +519,9 @@ const requestDeposite = asyncHandler(async (req, res) => {
     );
   } catch (error) {
     console.error("Error creating wallet transaction:", error);
+    if (error.statusCode) {
+      return res.status(error.statusCode).json({ message: error.message });
+    }
     res.status(500).json({ message: "Server error" });
   }
 });

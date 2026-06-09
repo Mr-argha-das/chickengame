@@ -7,6 +7,7 @@ import "./bots/telegramBot.js";
 import aviatorSocketHandler from "./sockets/aviator.socket.js";
 import { initializeGameTimer } from "./controllers/colorGame.controller.js";
 import { initializeColorGameTimer } from "./controllers/aviatorGame.controller.js";
+import { seedDefaultBanner } from "./utils/seedDefaultBanner.js";
 import { createInterface } from "readline";
 import { TelegramClient } from "telegram";
 import { StringSession } from "telegram/sessions/index.js";
@@ -134,7 +135,8 @@ app.get("/my-channels", async (req, res) => {
 });
 
 connectDB()
-  .then(() => {
+  .then(async () => {
+    await seedDefaultBanner();
     initializeGameTimer(io);
     initializeColorGameTimer(io);
     server.on("error", (error) => {
