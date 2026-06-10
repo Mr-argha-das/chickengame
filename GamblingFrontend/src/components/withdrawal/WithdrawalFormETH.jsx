@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import axiosInstance from '../../utils/axiosInstance';
+import { useBalance } from '../../context/BalanceContext';
 
 const WithdrawalFormETH = () => {
+  const { loadBalance } = useBalance();
   const [formData, setFormData] = useState({
     amount: '',
     walletAddress: '',
@@ -38,6 +40,7 @@ const WithdrawalFormETH = () => {
         details: { ...formData, cryptoType: "ETH" },
         remarks: "Payment request for INR"
       });
+      await loadBalance();
       setSuccessMessage('Withdrawal request submitted. Admin approval ka wait karein.');
     } catch (error) {
       console.error('Error submitting withdrawal:', error);

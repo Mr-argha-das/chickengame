@@ -106,7 +106,7 @@ const requestWithdrawal = asyncHandler(async (req, res) => {
     }
 
     user.walletBalance -= amount;
-    user.save();
+    await user.save();
 
     // 3. Log WalletTransaction (status: pending)
     const newTransaction = new WalletTransaction({

@@ -1,6 +1,6 @@
-import axios from "axios";
 import { ListCollapse } from "lucide-react";
 import React, { useState, useEffect } from "react";
+import axiosInstance from "../../utils/axiosInstance";
 
 const Withdrawals = () => {
   const [transactions, setTransactions] = useState([]);
@@ -11,9 +11,8 @@ const Withdrawals = () => {
   const fetchTransactionHistory = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/v1/wallet/history/withdrawals`);
-      const data = await response.json();
-      setTransactions(data.data.withdrawals);
+      const response = await axiosInstance.get("/api/v1/wallet/history/withdrawals");
+      setTransactions(response.data.data.withdrawals);
     } catch (error) {
       console.error("Error fetching transaction history:", error);
     } finally {
@@ -28,15 +27,13 @@ const Withdrawals = () => {
   if (loading) return <div className="text-center text-xl">Loading...</div>;
 
   // Update withdrawal status (approve/reject)
-  const updateWithdrawalStatus = async (transactionId, status, userId, amount) => {
+  const updateWithdrawalStatus = async (transactionId, status) => {
     try {
-      const response = await axios.put(
-        `${import.meta.env.VITE_API_URL}/api/v1/wallet/transaction/status`,
+      const response = await axiosInstance.put(
+        "/api/v1/wallet/transaction/status",
         {
           status,
           id: transactionId,
-          userId,
-          amount,
         }
       );
 
@@ -132,7 +129,7 @@ const Withdrawals = () => {
                       <div className="flex mt-2 space-x-4">
                         <button
                           onClick={() =>
-                            updateWithdrawalStatus(transaction._id, "approved", transaction.userId, transaction.amount)
+                            updateWithdrawalStatus(transaction._id, "approved")
                           }
                           className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600"
                         >
@@ -140,7 +137,7 @@ const Withdrawals = () => {
                         </button>
                         <button
                           onClick={() =>
-                            updateWithdrawalStatus(transaction._id, "rejected", transaction.userId, transaction.amount)
+                            updateWithdrawalStatus(transaction._id, "rejected")
                           }
                           className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600"
                         >
