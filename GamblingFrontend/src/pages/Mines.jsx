@@ -1,29 +1,27 @@
 import { useEffect, useRef, useState } from "react";
 import GameBoard from "../components/mines/GameBoard";
-import { startMineGame, stopMineGame } from "../services/mines";
+import { revealMineTile, startMineGame, stopMineGame } from "../services/mines";
 import { useAuth } from "../context/AuthContext";
 import BalanceButton from "../components/BalanceButton";
 import { useBalance } from "../context/BalanceContext";
 import WinPopup from "../components/chickenRoad/WinPopup";
 
-const minePositions = [
-  3, 7, 12, 17, 20, 1, 5, 9, 13, 22, 24, 0, 2, 4, 6, 8, 10, 11, 14, 15, 16, 18,
-  19, 21,
-];
-
 function Mines() {
   const [gameState, setGameState] = useState("setup");
   const [mineCount, setMineCount] = useState(3);
-  let multp = 0.2 + 0.05 * (mineCount - 3);
   const [winAmount, SetWinAmount] = useState(0);
   const [currentMines, setCurrentMines] = useState([]);
   const [revealedTiles, setRevealedTiles] = useState([]);
-  const [MINE_POSITIONS, setMINE_POSITIONS] = useState(minePositions);
   const [bet, setBet] = useState(10);
   const [showWinPopup, setShowWinPopup] = useState(false);
-  const [multiplier, setMultiplier] = useState(1 + multp);
+  const [multiplier, setMultiplier] = useState(1.2);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
   const { user } = useAuth();
-  const { balance, setBalance, loadBalance } = useBalance();
+  const { balance, setBalance } = useBalance();
+
+  const getBaseMultiplier = (nextMineCount = mineCount) =>
+    Number((1 + 0.2 + 0.05 * (nextMineCount - 3)).toFixed(2));
 
   useEffect(() => {
     const audio = new Audio("/main.mp3");
@@ -38,73 +36,119 @@ function Mines() {
     };
   }, []);
 
-  const startGame = () => {
-    if (balance < bet) {
-      alert("Insufficient balance!");
+  const startGame = async () => {
+    const betAmount = Number(bet);
+    if (!user?._id) {
+      setErrorMessage("Please login again.");
       return;
     }
 
-    startMineGame(user._id, bet)
-      .then((data) => {
-        const fetchedMultipliers = data.data.multipliers;
-        setMINE_POSITIONS(fetchedMultipliers);
-        setGameState("playing");
-        setRevealedTiles([]);
-        setCurrentMines(MINE_POSITIONS.slice(0, mineCount));
-        setMultiplier(1 + multp);
-      })
-      .catch((err) => console.error("Failed to start game."));
-  };
+    if (!betAmount || betAmount < 10) {
+      setErrorMessage("Minimum bet amount is 10.");
+      return;
+    }
 
-  const handleTileClick = (index) => {
-    if (revealedTiles.includes(index)) return;
-    if (currentMines.includes(index)) {
-      const bombAudio = new Audio("/bomb.m4a"); // path relative to /public
-      const loseAudio = new Audio("/lose.wav");
+    if (balance < bet) {
+      setErrorMessage("Insufficient balance!");
+      return;
+    }
 
-      bombAudio
-        .play()
-        .then(() => {
-          bombAudio.onended = () => {
-            loseAudio.play().catch((e) => {
-              console.warn("Lose sound failed:", e);
-            });
-          };
-        })
-        .catch((e) => {
-          console.warn("Fire sound failed:", e);
-        });
-
-      setGameState("lost");
-      setTimeout(() => {
-        setShowWinPopup(true);
-      }, 1000);
-
-      setBalance(balance - bet);
-      setRevealedTiles([...revealedTiles, index]);
-      stopMineGame(user._id, bet, 0);
-    } else {
-      const newRevealed = [...revealedTiles, index];
-      setRevealedTiles(newRevealed);
-      const safeClicks = newRevealed.length;
-      const remainingSafe = 25 - mineCount - safeClicks;
-      const newMultiplier = +(1 + safeClicks * multp).toFixed(2);
-      setMultiplier(newMultiplier);
+    try {
+      setIsSubmitting(true);
+      setErrorMessage("");
+      const response = await startMineGame(betAmount, mineCount);
+      setGameState("playing");
+      setRevealedTiles([]);
+      setCurrentMines([]);
+      setMultiplier(response.data?.data?.multiplier || getBaseMultiplier());
+      if (typeof response.data?.data?.walletBalance === "number") {
+        setBalance(response.data.data.walletBalance);
+      }
+    } catch (error) {
+      setErrorMessage(error?.response?.data?.message || "Failed to start game.");
+      console.error("Failed to start mines game:", error?.response?.data || error.message);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  const handleCashOut = () => {
-    const audio = new Audio("/win.wav");
-    audio.play().catch((e) => {
-      console.warn("Playback failed:", e);
-    });
+  const handleTileClick = async (index) => {
+    if (gameState !== "playing" || isSubmitting) return;
+    if (revealedTiles.includes(index)) return;
 
-    const winnings = +(bet * multiplier).toFixed(2);
-    setBalance(balance + winnings);
-    setGameState("won");
-    setShowWinPopup(true);
-    SetWinAmount(winnings);
-    stopMineGame(user._id, bet, winnings);
+    try {
+      setIsSubmitting(true);
+      setErrorMessage("");
+      const response = await revealMineTile(index);
+      const result = response.data?.data || {};
+
+      if (result.hitMine) {
+        const bombAudio = new Audio("/bomb.m4a"); // path relative to /public
+        const loseAudio = new Audio("/lose.wav");
+
+        bombAudio
+          .play()
+          .then(() => {
+            bombAudio.onended = () => {
+              loseAudio.play().catch((e) => {
+                console.warn("Lose sound failed:", e);
+              });
+            };
+          })
+          .catch((e) => {
+            console.warn("Fire sound failed:", e);
+          });
+
+        setCurrentMines(result.minePositions || []);
+        setRevealedTiles((prev) => [...new Set([...prev, index, ...(result.minePositions || [])])]);
+        setGameState("lost");
+        SetWinAmount(0);
+        setTimeout(() => {
+          setShowWinPopup(true);
+        }, 1000);
+        return;
+      }
+
+      setRevealedTiles(result.revealedTiles || [...revealedTiles, index]);
+      setMultiplier(result.multiplier || multiplier);
+    } catch (error) {
+      setErrorMessage(error?.response?.data?.message || "Failed to reveal tile.");
+      console.error("Failed to reveal mines tile:", error?.response?.data || error.message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleCashOut = async () => {
+    if (isSubmitting || revealedTiles.length === 0) {
+      setErrorMessage("Reveal at least one gem before cashing out.");
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      setErrorMessage("");
+      const response = await stopMineGame();
+      const result = response.data?.data || {};
+      const audio = new Audio("/win.wav");
+      audio.play().catch((e) => {
+        console.warn("Playback failed:", e);
+      });
+
+      const winnings = Number(result.payout || 0);
+      if (typeof result.walletBalance === "number") {
+        setBalance(result.walletBalance);
+      }
+      setMultiplier(result.multiplier || multiplier);
+      setGameState("won");
+      setShowWinPopup(true);
+      SetWinAmount(winnings);
+    } catch (error) {
+      setErrorMessage(error?.response?.data?.message || "Cash out failed.");
+      console.error("Failed to cash out mines game:", error?.response?.data || error.message);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const getPotentialWin = () => {
@@ -116,7 +160,8 @@ function Mines() {
     setRevealedTiles([]);
     setCurrentMines([]);
     SetWinAmount(0);
-    setMultiplier(1);
+    setMultiplier(getBaseMultiplier());
+    setErrorMessage("");
   };
 
   const closePopup = () => {
@@ -191,8 +236,9 @@ function Mines() {
               max={24}
               value={mineCount}
               onChange={(e) => {
-                setMineCount(Number(e.target.value));
-                setMultiplier(parseFloat(1 + multp).toFixed(2));
+                const nextMineCount = Math.min(24, Math.max(3, Number(e.target.value)));
+                setMineCount(nextMineCount);
+                setMultiplier(getBaseMultiplier(nextMineCount));
               }}
               disabled={gameState !== "setup"}
               className="w-24 px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white text-sm focus:outline-none focus:border-blue-500 disabled:opacity-50"
@@ -214,9 +260,10 @@ function Mines() {
             {gameState === "setup" && (
               <button
                 onClick={startGame}
+                disabled={isSubmitting}
                 className="flex items-center space-x-2 px-6 py-3 bg-green-600 hover:bg-green-700 rounded-lg transition-colors font-semibold text-white"
               >
-                <span>Start Game</span>
+                <span>{isSubmitting ? "Starting..." : "Start Game"}</span>
               </button>
             )}
 
@@ -224,14 +271,15 @@ function Mines() {
               <>
                 <button
                   onClick={() => handleCashOut()}
+                  disabled={isSubmitting}
                   className="flex items-center space-x-2 px-6 py-3 bg-yellow-600 hover:bg-yellow-700 rounded-lg transition-colors font-semibold text-white"
                 >
-                  <span>Cash Out</span>
+                  <span>{isSubmitting ? "Please wait..." : "Cash Out"}</span>
                 </button>
               </>
             )}
 
-            {(gameState === "gameOver" || gameState === "won") && (
+            {["gameOver", "lost", "won"].includes(gameState) && (
               <button
                 onClick={resetGame}
                 className="flex items-center space-x-2 px-4 py-2 bg-gray-600 hover:bg-gray-700 rounded-lg transition-colors font-semibold text-white"
@@ -240,6 +288,10 @@ function Mines() {
               </button>
             )}
           </div>
+
+          {errorMessage && (
+            <p className="text-sm font-semibold text-red-400">{errorMessage}</p>
+          )}
 
           {/* Current Stats */}
           <div className="flex items-center space-x-6">

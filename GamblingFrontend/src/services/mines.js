@@ -1,37 +1,11 @@
-import axios from "axios";
+import axiosInstance from "../utils/axiosInstance";
 
+const startMineGame = (betAmount, mineCount) =>
+  axiosInstance.post("/api/v1/mine/start", { betAmount, mineCount });
 
-const startMineGame = async ( userId, betAmount) => {
-  try {
-    const response = await axios.post(`${import.meta.env.VITE_API_URL}/api/v1/mine/start`, {
-      userId,
-      gameType: 'mining',
-      betAmount: betAmount
-    });
+const revealMineTile = (tileIndex) =>
+  axiosInstance.post("/api/v1/mine/reveal", { tileIndex });
 
-    return response.data;
-  } catch (error) {
-    console.error('Error starting chicken game:', error.response?.data || error.message);
-    throw error;
-  }
-};
+const stopMineGame = () => axiosInstance.post("/api/v1/mine/stop");
 
-const stopMineGame = async ( userId, betAmount, payout ) => {
-  try {
-    const response = await axios.post(`${import.meta.env.VITE_API_URL}/api/v1/mine/stop`, {
-      userId,
-      betAmount,
-      payout
-    });
-
-    return response.data;
-  } catch (error) {
-    console.error('Error starting chicken game:', error.response?.data || error.message);
-    throw error;
-  }
-};
-
-export {
-    startMineGame,
-    stopMineGame
-}
+export { revealMineTile, startMineGame, stopMineGame };

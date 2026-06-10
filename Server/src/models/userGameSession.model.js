@@ -19,6 +19,14 @@ const userGameSessionSchema = new mongoose.Schema({
     type: [Number], // E.g., [1.2, 1.45, 1.65, 0.0]
     required: true
   },
+  revealedTiles: {
+    type: [Number],
+    default: []
+  },
+  mineCount: {
+    type: Number,
+    default: 3
+  },
   currentStepIndex: {
     type: Number,
     default: 0 // Starts from first multiplier
