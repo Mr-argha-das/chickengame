@@ -6,6 +6,7 @@ import { GameRound } from "../models/gameRound.model.js";
 
 let currentRound = null;
 let gameTimer = null;
+let gameLoopStarted = false;
 const ROUND_DURATION = 60000; // 1 minute in milliseconds
 
 // Game rules
@@ -67,6 +68,12 @@ export async function createNewRound() {
 
 // Get current round info
 export async function getCurrentRound() {
+  if (!currentRound) {
+    currentRound = await ColorGameRound.findOne({ isCompleted: false }).sort({
+      createdAt: -1,
+    });
+  }
+
   if (!currentRound) return null;
 
   const now = new Date();
@@ -210,8 +217,19 @@ async function processBets(round) {
 
 // Initialize game timer loop
 export function initializeGameTimer(io) {
+  if (gameLoopStarted) {
+    console.log("Color game timer already running.");
+    return;
+  }
+
+  gameLoopStarted = true;
+
   async function startGameLoop() {
     try {
+      if (gameTimer) {
+        clearTimeout(gameTimer);
+      }
+
       await createNewRound();
       console.log(`New round started: ${currentRound.period}`);
 

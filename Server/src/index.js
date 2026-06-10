@@ -5,7 +5,10 @@ import { Server } from "socket.io";
 import { app } from "./app.js";
 import "./bots/telegramBot.js";
 import aviatorSocketHandler from "./sockets/aviator.socket.js";
-import { initializeGameTimer } from "./controllers/colorGame.controller.js";
+import {
+  getCurrentRound,
+  initializeGameTimer,
+} from "./controllers/colorGame.controller.js";
 import { initializeColorGameTimer } from "./controllers/aviatorGame.controller.js";
 import { seedDefaultBanner } from "./utils/seedDefaultBanner.js";
 import { seedDefaultAdmin } from "./utils/seedAdmin.js";
@@ -104,8 +107,23 @@ const prompt = (query) =>
 
 app.set("io", io);
 
-io.on("connection", (socket) => {
+io.on("connection", async (socket) => {
   // console.log("🔌 New client connected:", socket.id);
+  try {
+    const currentRound = await getCurrentRound();
+    if (currentRound) {
+      socket.emit("newRound", {
+        period: currentRound.period,
+        startTime: currentRound.startTime,
+        endTime: currentRound.endTime,
+        duration: Math.max(0, currentRound.timeLeft) * 1000,
+      });
+      socket.emit("countdown", { timeLeft: currentRound.timeLeft });
+    }
+  } catch (error) {
+    console.error("Error sending current color round:", error);
+  }
+
   //aviatorSocketHandler(io, socket); // <-- Handle Aviator game socket logic here
   socket.on("disconnect", () => {
     // console.log("❌ Client disconnected:", socket.id);
