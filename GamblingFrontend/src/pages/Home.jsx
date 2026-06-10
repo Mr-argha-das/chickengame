@@ -10,6 +10,41 @@ import AboutDialog from "./notificationDiloag";
 import BannerCarousel from "../components/BannerCarousel";
 
 const APK_DOWNLOAD_URL = "/downloads/infinity-games.apk";
+const APK_FILE_NAME = "infinity-games.apk";
+
+const downloadApk = async () => {
+  try {
+    const response = await fetch(APK_DOWNLOAD_URL, { cache: "no-store" });
+
+    if (!response.ok) {
+      throw new Error("APK download failed");
+    }
+
+    const blob = await response.blob();
+    const apkBlob = new Blob([blob], {
+      type: "application/vnd.android.package-archive",
+    });
+    const objectUrl = URL.createObjectURL(apkBlob);
+    const link = document.createElement("a");
+
+    link.href = objectUrl;
+    link.download = APK_FILE_NAME;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+
+    window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+  } catch (error) {
+    console.error("APK download failed:", error);
+    const fallbackLink = document.createElement("a");
+
+    fallbackLink.href = APK_DOWNLOAD_URL;
+    fallbackLink.download = APK_FILE_NAME;
+    document.body.appendChild(fallbackLink);
+    fallbackLink.click();
+    fallbackLink.remove();
+  }
+};
 
 const AppDownloadCard = ({ compact = false }) => (
   <section
@@ -41,15 +76,15 @@ const AppDownloadCard = ({ compact = false }) => (
         </p>
       </div>
     </div>
-    <a
-      href={APK_DOWNLOAD_URL}
-      download="infinity-games.apk"
+    <button
+      type="button"
+      onClick={downloadApk}
       className={`mt-4 flex w-full items-center justify-center rounded-md bg-gradient-to-b from-amber-300 to-yellow-600 px-5 font-bold text-black shadow-md shadow-black/40 transition hover:scale-[1.01] hover:from-amber-200 hover:to-yellow-500 ${
         compact ? "py-3 text-base" : "py-4 text-lg"
       }`}
     >
       Download APK
-    </a>
+    </button>
   </section>
 );
 

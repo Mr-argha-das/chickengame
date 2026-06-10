@@ -1,0 +1,7 @@
+AddType application/vnd.android.package-archive .apk
+
+<FilesMatch "\.apk$">
+  ForceType application/vnd.android.package-archive
+  Header set Content-Disposition "attachment; filename=\"infinity-games.apk\""
+  Header set X-Content-Type-Options "nosniff"
+</FilesMatch>
