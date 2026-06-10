@@ -304,20 +304,6 @@ export async function getGameHistory(limit = 50) {
       .limit(limit)
       .select("period winningNumber winningColor size createdAt");
 
-    const latestColorRound = await GameRound.findOne({
-      gameType: "color",
-    }).sort({ createdAt: -1 });
-
-    history.forEach(async (item) => {
-      if (item.period === latestColorRound.period) {
-        await ColorGameRound.findByIdAndUpdate(
-          item.id,
-          { $set: { winningNumber: 6 } },
-          { new: true }
-        );
-      }
-    });
-
     return history;
   } catch (error) {
     console.error("Error fetching game history:", error);
