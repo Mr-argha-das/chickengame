@@ -191,11 +191,14 @@ const Signup = () => {
         }
       } catch (error) {
         console.log("Registration error:", error);
+        const serverMessage =
+          error.response?.data?.message ||
+          error.response?.data?.error ||
+          error.message;
+
         setSubmitStatus({
           type: "error",
-          message:
-            error.response?.data?.message ||
-            "Registration failed. Please try again.",
+          message: serverMessage || "Registration failed. Please try again.",
         });
       }
     } else {

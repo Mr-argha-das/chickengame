@@ -79,4 +79,14 @@ app.use("/api/v1/refer-amount", referAmount);
 app.use("/api/v1/telegram-amount", telegramAmount);
 app.use("/api/v1/banners", bannerRouter);
 
+app.use((err, req, res, next) => {
+  const statusCode = err.statusCode || 500;
+
+  return res.status(statusCode).json({
+    success: false,
+    message: err.message || "Internal server error",
+    errors: err.errors || [],
+  });
+});
+
 export { app };

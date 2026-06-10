@@ -102,7 +102,9 @@ const generateAccessAndRefreshToken = async (userId) => {
 // });
 
 const registerUser = asyncHandler(async (req, res) => {
-  const { phoneNumber, email, fullName, password, ref_by } = req.body;
+  const { fullName, password, ref_by } = req.body;
+  const email = req.body.email?.trim().toLowerCase();
+  const phoneNumber = req.body.phoneNumber?.trim();
 
   if ([fullName, email, phoneNumber, password].some((f) => !f?.trim())) {
     throw new apiError(400, "All fields are required!");
@@ -113,11 +115,27 @@ const registerUser = asyncHandler(async (req, res) => {
   });
 
   if (existedUser) {
-    throw new apiError(409, "User with email or PhoneNumber already exists");
+    const isEmailTaken = existedUser.email === email;
+    const isPhoneTaken = existedUser.phoneNumber === phoneNumber;
+    let message = "Account already exists. Please login or use different details.";
+
+    if (isEmailTaken && isPhoneTaken) {
+      message = "Email and phone number are already registered. Please login.";
+    } else if (isEmailTaken) {
+      message = "Email is already registered. Please login or use another email.";
+    } else if (isPhoneTaken) {
+      message =
+        "Phone number is already registered. Please login or use another phone number.";
+    }
+
+    return res.status(409).json({
+      success: false,
+      message,
+    });
   }
 
   const user = await User.create({
-    fullName,
+    fullName: fullName.trim(),
     email,
     password,
     phoneNumber,
