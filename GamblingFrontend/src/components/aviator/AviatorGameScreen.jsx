@@ -1,6 +1,11 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useAviatorSocket } from "../../context/AviatorSocketContext";
-import { getUserBets, getAllBets } from "../../services/aviatorApi";
+import {
+  cashOutAviatorBet,
+  getAllBets,
+  getUserBets,
+  placeAviatorBet,
+} from "../../services/aviatorApi";
 import { History } from "lucide-react";
 import HistorySection from "./HistorySection";
 import Header from "./Header";
@@ -330,21 +335,16 @@ export default function AviatorGameScreen() {
   const handlePlaceBet = async () => {
     if (!isConnected || hasBet || !userId) return;
     try {
-      const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/api/v1/aviator/bet`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ userId, amount: bet }),
-        }
-      );
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "Failed to place bet");
+      await placeAviatorBet(Number(bet));
       setHasBet(true);
       setBalance((prev) => prev - bet);
       setHasCashedOut(false);
+      fetchUserBets();
     } catch (error) {
-      console.error("Error placing bet:", error.message);
+      console.error(
+        "Error placing bet:",
+        error?.response?.data?.error || error.message
+      );
     }
   };
   const closePopup = () => {
@@ -354,22 +354,18 @@ export default function AviatorGameScreen() {
   const handleCashOut = async () => {
     if (!isConnected || !hasBet || hasCashedOut || !userId) return;
     try {
-      const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/api/v1/aviator/cashout`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ userId }),
-        }
-      );
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "Cash out failed");
+      await cashOutAviatorBet();
       const audio1 = new Audio("/win.wav");
       audio1.play().catch(() => {});
       setHasCashedOut(true);
+      loadBalance();
+      fetchUserBets();
       
     } catch (error) {
-      console.error("Error during cash out:", error.message);
+      console.error(
+        "Error during cash out:",
+        error?.response?.data?.error || error.message
+      );
     }
   };
 

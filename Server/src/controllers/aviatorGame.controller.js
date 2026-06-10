@@ -155,6 +155,10 @@ export async function placeBet(betData, io) {
     throw new Error("Wait for next round");
   }
 
+  if (bets.some((bet) => bet.userId === userId && !bet.cashedOut)) {
+    throw new Error("Bet already placed for this round");
+  }
+
   const user = await User.findById(userId);
   if (!user || user.walletBalance < amount) {
     throw new Error("Insufficient wallet balance");
