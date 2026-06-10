@@ -48,6 +48,7 @@ const Withdrawals = () => {
       }
     } catch (error) {
       console.error("Error updating status:", error);
+      alert(error?.response?.data?.message || "Failed to update withdrawal status");
     }
   };
 

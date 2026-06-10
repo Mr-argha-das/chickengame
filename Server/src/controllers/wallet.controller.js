@@ -101,13 +101,6 @@ const requestWithdrawal = asyncHandler(async (req, res) => {
       throw new apiError(404, "User not found");
     }
 
-    if (user.walletBalance < amount) {
-      throw new apiError(400, "Insufficient wallet balance");
-    }
-
-    user.walletBalance -= amount;
-    await user.save();
-
     // 3. Log WalletTransaction (status: pending)
     const newTransaction = new WalletTransaction({
       userId,
@@ -116,7 +109,11 @@ const requestWithdrawal = asyncHandler(async (req, res) => {
       method,
       status: "pending",
       adminVerified: false,
-      details: details || {},
+      details: {
+        ...(details || {}),
+        balanceAtRequest: user.walletBalance,
+        balanceDeducted: false,
+      },
       remarks: remarks || [],
     });
 
@@ -232,14 +229,45 @@ const updateWalletTransactionStatus = async (req, res) => {
       return res.status(404).json({ message: "Transaction not found" });
     }
 
+    if (transaction.type === "withdrawal" && status === "approved") {
+      if (transaction.status === "approved") {
+        return res.status(400).json({ message: "Transaction already approved" });
+      }
+
+      const user = await User.findById(transaction.userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      if (!transaction.details?.balanceDeducted) {
+        if (user.walletBalance < transaction.amount) {
+          return res.status(400).json({
+            message: `Insufficient wallet balance. Available balance: ${user.walletBalance}`,
+          });
+        }
+
+        user.walletBalance -= transaction.amount;
+        await user.save();
+        updateFields.$set = {
+          "details.balanceDeducted": true,
+          "details.balanceDeductedAt": new Date(),
+        };
+      }
+    }
+
     if (
       transaction.type === "withdrawal" &&
       status === "rejected" &&
-      transaction.status !== "rejected"
+      transaction.status !== "rejected" &&
+      transaction.details?.balanceDeducted
     ) {
       const user = await User.findById(transaction.userId);
       user.walletBalance += transaction.amount;
       await user.save();
+      updateFields.$set = {
+        "details.balanceDeducted": false,
+        "details.balanceRefundedAt": new Date(),
+      };
     }
 
     const updatedTransaction = await WalletTransaction.findByIdAndUpdate(
