@@ -21,6 +21,8 @@ export default function AviatorGameScreen() {
     multiplier,
     crashPoint,
     isRunning,
+    isBettingOpen,
+    bettingTimeLeft,
     liveBets,
     topBets,
     hasBet,
@@ -333,7 +335,7 @@ export default function AviatorGameScreen() {
   };
 
   const handlePlaceBet = async () => {
-    if (!isConnected || hasBet || !userId) return;
+    if (!isConnected || hasBet || !userId || !isBettingOpen) return;
     try {
       await placeAviatorBet(Number(bet));
       setHasBet(true);
@@ -360,7 +362,6 @@ export default function AviatorGameScreen() {
       setHasCashedOut(true);
       loadBalance();
       fetchUserBets();
-      
     } catch (error) {
       console.error(
         "Error during cash out:",
@@ -419,7 +420,16 @@ export default function AviatorGameScreen() {
             className="block w-full  md:max-h-[720px] max-h-[250px] bg-transparent"
           />
 
-          {!isRunning && crashPoint ? (
+          {isBettingOpen ? (
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/30 backdrop-blur-sm">
+              <p className="text-yellow-300 text-2xl md:text-3xl font-bold mt-10">
+                Place your bet
+              </p>
+              <p className="text-white text-lg mt-2">
+                Betting closes in {bettingTimeLeft}s
+              </p>
+            </div>
+          ) : !isRunning && crashPoint ? (
             <div className="absolute inset-0  flex flex-col items-center justify-center bg-black/30 backdrop-blur-sm">
               <p className="text-red-400 text-2xl md:text-3xl font-bold mt-10">
                 💥 Crashed at {crashPoint.toFixed(2)}x
@@ -468,9 +478,10 @@ export default function AviatorGameScreen() {
               {!hasBet ? (
                 <button
                   onClick={handlePlaceBet}
-                  className="px-4 py-2 w-full rounded-xl bg-emerald-600 hover:bg-emerald-700 font-semibold shadow-[0_8px_20px_rgba(16,185,129,0.25)]"
+                  disabled={!isBettingOpen || !isConnected || !userId}
+                  className="px-4 py-2 w-full rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-600 disabled:opacity-60 font-semibold shadow-[0_8px_20px_rgba(16,185,129,0.25)]"
                 >
-                  Place Bet
+                  {isBettingOpen ? `Place Bet (${bettingTimeLeft}s)` : "Bet Closed"}
                 </button>
               ) : !hasCashedOut ? (
                 <button

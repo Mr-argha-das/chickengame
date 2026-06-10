@@ -10,11 +10,14 @@ let gameTimer = null;
 let currentMultiplier = 1.0;
 let crashPoint = 0;
 let isGameRunning = false;
+let isBettingOpen = false;
+let bettingClosesAt = null;
 let bets = []; // Array to hold live bets
 
 // Config
 const TICK_INTERVAL = 200; // ms
 const ROUND_GAP = 5000; // Gap between rounds in ms
+const BETTING_WINDOW = 10000; // Betting window before each round in ms
 const START_MULTIPLIER = 1.0;
 const MULTIPLIER_INCREMENT = 0.05;
 
@@ -42,7 +45,9 @@ export async function createNewRound() {
 
     currentMultiplier = START_MULTIPLIER;
     bets = [];
-    isGameRunning = true;
+    isGameRunning = false;
+    isBettingOpen = true;
+    bettingClosesAt = new Date(Date.now() + BETTING_WINDOW);
 
     const roundId = Date.now().toString();
 
@@ -94,6 +99,8 @@ export async function completeCurrentRound() {
 
 // Process cash out for a player
 export async function cashOut(userId, io) {
+  if (!isGameRunning) throw new Error("Round has not started yet");
+
   const bet = bets.find((b) => b.userId === userId && !b.cashedOut);
   if (!bet) throw new Error("No active bet");
 
@@ -131,8 +138,8 @@ export async function cashOut(userId, io) {
 export async function placeBet(betData, io) {
   const { userId, amount } = betData;
 
-  if (!isGameRunning) {
-    throw new Error("Wait for next round");
+  if (!isBettingOpen || Date.now() > bettingClosesAt?.getTime()) {
+    throw new Error("Betting closed. Wait for next round");
   }
 
   if (bets.some((bet) => bet.userId === userId && !bet.cashedOut)) {
@@ -190,24 +197,35 @@ export function initializeColorGameTimer(io) {
 
       console.log(`🚀 Aviator round started! Crash at: ${round.crashPoint}x`);
 
-      io.emit("roundStart", { crashPoint, history: allHistory });
+      io.emit("roundStart", {
+        crashPoint,
+        history: allHistory,
+        bettingWindowSeconds: BETTING_WINDOW / 1000,
+        bettingClosesAt,
+      });
 
-      gameTimer = setInterval(async () => {
-        if (currentMultiplier >= crashPoint) {
-          clearInterval(gameTimer);
-          io.emit("roundCrash", { multiplier: crashPoint });
+      setTimeout(() => {
+        isBettingOpen = false;
+        isGameRunning = true;
+        io.emit("bettingClosed");
 
-          await completeCurrentRound();
-          isGameRunning = false;
+        gameTimer = setInterval(async () => {
+          if (currentMultiplier >= crashPoint) {
+            clearInterval(gameTimer);
+            io.emit("roundCrash", { multiplier: crashPoint });
 
-          setTimeout(startGameLoop, ROUND_GAP);
-        } else {
-          currentMultiplier = parseFloat(
-            (currentMultiplier + MULTIPLIER_INCREMENT).toFixed(2)
-          );
-          io.emit("multiplierUpdate", { multiplier: currentMultiplier });
-        }
-      }, TICK_INTERVAL);
+            await completeCurrentRound();
+            isGameRunning = false;
+
+            setTimeout(startGameLoop, ROUND_GAP);
+          } else {
+            currentMultiplier = parseFloat(
+              (currentMultiplier + MULTIPLIER_INCREMENT).toFixed(2)
+            );
+            io.emit("multiplierUpdate", { multiplier: currentMultiplier });
+          }
+        }, TICK_INTERVAL);
+      }, BETTING_WINDOW);
     } catch (error) {
       console.error("Error in Aviator game loop:", error);
       setTimeout(startGameLoop, ROUND_GAP);
@@ -225,6 +243,8 @@ export async function getCurrentRound() {
     crashPoint,
     multiplier: currentMultiplier,
     isActive: isGameRunning,
+    isBettingOpen,
+    bettingClosesAt,
     roundId: currentRound._id,
   };
 }

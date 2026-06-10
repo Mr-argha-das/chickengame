@@ -17,6 +17,8 @@ export const AviatorSocketProvider = ({ children }) => {
   const [multiplier, setMultiplier] = useState(1.0);
   const [crashPoint, setCrashPoint] = useState(null);
   const [isRunning, setIsRunning] = useState(false);
+  const [isBettingOpen, setIsBettingOpen] = useState(false);
+  const [bettingTimeLeft, setBettingTimeLeft] = useState(0);
   const [liveBets, setLiveBets] = useState([]);
   const [topBets, setTopBets] = useState([]);
   const [hasBet, setHasBet] = useState(false);
@@ -30,15 +32,42 @@ export const AviatorSocketProvider = ({ children }) => {
     newSocket.on('connect', () => setIsConnected(true));
     newSocket.on('disconnect', () => setIsConnected(false));
 
-    newSocket.on('roundStart', ({ crashPoint, history }) => {
+    let bettingTimer = null;
+
+    const startBettingCountdown = (bettingClosesAt, fallbackSeconds = 10) => {
+      if (bettingTimer) clearInterval(bettingTimer);
+
+      const closesAt = bettingClosesAt ? new Date(bettingClosesAt).getTime() : Date.now() + fallbackSeconds * 1000;
+      const updateCountdown = () => {
+        const nextValue = Math.max(0, Math.ceil((closesAt - Date.now()) / 1000));
+        setBettingTimeLeft(nextValue);
+        if (nextValue <= 0 && bettingTimer) {
+          clearInterval(bettingTimer);
+        }
+      };
+
+      updateCountdown();
+      bettingTimer = setInterval(updateCountdown, 250);
+    };
+
+    newSocket.on('roundStart', ({ crashPoint, history, bettingClosesAt, bettingWindowSeconds }) => {
       setCrashPoint(crashPoint);
       setMultiplier(1.0);
-      setIsRunning(true);
+      setIsRunning(false);
+      setIsBettingOpen(true);
       setHasBet(false);
+      startBettingCountdown(bettingClosesAt, bettingWindowSeconds);
       if (!historyLoaded && Array.isArray(history) && history.length > 0) {
         setGameHistory(history);
         setHistoryLoaded(true); // ek bar load hone ke baad dobara overwrite mat karna
       }
+    });
+
+    newSocket.on('bettingClosed', () => {
+      setIsBettingOpen(false);
+      setBettingTimeLeft(0);
+      setIsRunning(true);
+      if (bettingTimer) clearInterval(bettingTimer);
     });
 
     newSocket.on('multiplierUpdate', ({ multiplier, history }) => {
@@ -51,6 +80,8 @@ export const AviatorSocketProvider = ({ children }) => {
       // console.log('allHistory', history);
       setMultiplier(multiplier);
       setIsRunning(false);
+      setIsBettingOpen(false);
+      setBettingTimeLeft(0);
     });
 
     newSocket.on('newLiveBet', (liveBets) => {
@@ -62,12 +93,15 @@ export const AviatorSocketProvider = ({ children }) => {
     //   setTopBets(topBets);
     // });
 
-    return () => newSocket.disconnect();
+    return () => {
+      if (bettingTimer) clearInterval(bettingTimer);
+      newSocket.disconnect();
+    };
   }, []);
 
   return (
     <AviatorSocketContext.Provider
-      value={{ socket, isConnected, multiplier, crashPoint, isRunning, liveBets, topBets, hasBet, gameHistory, setHasBet }}
+      value={{ socket, isConnected, multiplier, crashPoint, isRunning, isBettingOpen, bettingTimeLeft, liveBets, topBets, hasBet, gameHistory, setHasBet }}
     >
       {children}
     </AviatorSocketContext.Provider>
