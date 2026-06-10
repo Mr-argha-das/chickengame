@@ -1,7 +1,6 @@
 import AviatorRound from "../models/aviatorRound.model.js";
 import { User } from "../models/user.model.js";
 import { GameHistory } from "../models/gameHistory.model.js";
-import Bet from "../models/Bet.model.js";
 import { GameRound } from "../models/gameRound.model.js";
 // import { getGameHistory } from './colorGame.controller.js';
 
@@ -83,15 +82,6 @@ export async function completeCurrentRound() {
           roundId: currentRound._id?.toString() || null,
         });
 
-        const betDoc = new Bet({
-          userId: bet.userId,
-          roundId: currentRound._id,
-          amount: bet.betAmount,
-          multiplier: crashPoint,
-          isWon: false,
-          payout: 0,
-        });
-        await betDoc.save();
       }
     }
 
@@ -129,16 +119,6 @@ export async function cashOut(userId, io) {
     win: true,
     roundId: currentRound._id?.toString() || null,
   });
-
-  const betDoc = new Bet({
-    userId,
-    roundId: currentRound._id,
-    amount: bet.betAmount,
-    multiplier: currentMultiplier,
-    isWon: true,
-    payout: winnings,
-  });
-  await betDoc.save();
 
   if (io) {
     io.emit("newLiveBet", getLiveBets());
