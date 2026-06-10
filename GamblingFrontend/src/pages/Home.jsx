@@ -9,6 +9,50 @@ import TelegramMenu from "../components/TelegramMenu";
 import AboutDialog from "./notificationDiloag";
 import BannerCarousel from "../components/BannerCarousel";
 
+const APK_DOWNLOAD_URL = "/downloads/infinity-games.apk";
+
+const AppDownloadCard = ({ compact = false }) => (
+  <section
+    className={`mx-5 rounded border border-amber-300/60 bg-gradient-to-br from-[#3b0008] via-[#9C1137] to-black shadow-lg shadow-[#9C1137]/30 ${
+      compact ? "p-4" : "p-5"
+    }`}
+  >
+    <div className="flex items-center gap-4">
+      <img
+        src="/infinity-games-logo.png"
+        alt="Infinity Games"
+        className={`shrink-0 rounded bg-black object-contain ${
+          compact ? "h-14 w-14" : "h-20 w-20"
+        }`}
+      />
+      <div className="min-w-0 flex-1">
+        <p className="text-xs font-semibold uppercase tracking-wide text-amber-200">
+          Android App
+        </p>
+        <h2
+          className={`font-bold leading-tight text-white ${
+            compact ? "text-lg" : "text-2xl"
+          }`}
+        >
+          Download Infinity Games APK
+        </h2>
+        <p className="mt-1 text-sm text-amber-50/90">
+          Install the app and play faster from your phone.
+        </p>
+      </div>
+    </div>
+    <a
+      href={APK_DOWNLOAD_URL}
+      download="infinity-games.apk"
+      className={`mt-4 flex w-full items-center justify-center rounded-md bg-gradient-to-b from-amber-300 to-yellow-600 px-5 font-bold text-black shadow-md shadow-black/40 transition hover:scale-[1.01] hover:from-amber-200 hover:to-yellow-500 ${
+        compact ? "py-3 text-base" : "py-4 text-lg"
+      }`}
+    >
+      Download APK
+    </a>
+  </section>
+);
+
 const Home = () => {
   const [games, setGames] = useState([]);
   console.log(games);
@@ -75,10 +119,9 @@ const Home = () => {
                 // className="bg-blue-500  hover:bg-blue-600"
               />
             </Link>
-            <Button
-              className="bg-gradient-to-b lg:w-[70%] h-12 w-full from-[#9C1137] via-[#9C1137]  to-black"
-              children="Download Our App"
-            ></Button>
+            <div className="w-full max-w-xl">
+              <AppDownloadCard />
+            </div>
           </div>
           <Slider />
         </div>
@@ -112,6 +155,7 @@ const Home = () => {
 
       <div className="md:hidden flex flex-col pt-4">
         <Slider />
+        <AppDownloadCard compact />
         <div className="my-8 flex flex-col flex-wrap md:flex-row gap-y-4 md:px-20 px-6 justify-around">
           {games.map((gameKey) => {
             const info = gameInfo[gameKey];
