@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import axios from "axios";
+import axiosInstance from "../../utils/axiosInstance";
 
 const TransactionHistory = () => {
   const [transactions, setTransactions] = useState([]);
@@ -13,15 +13,14 @@ const TransactionHistory = () => {
     setError(null);
 
     try {
-      const response = await axios.get(
-        `${import.meta.env.VITE_API_URL}/api/v1/wallet/history/users`,
+      const response = await axiosInstance.get(
+        "/api/v1/wallet/history/users",
         {
           params: {
-            page: 1, // or dynamic
+            page: pageNumber,
           },
         }
       );
-      console.log(response);
       const { transactions, totalPages } = response.data.data;
 
       setTransactions(transactions);
@@ -29,7 +28,10 @@ const TransactionHistory = () => {
       setPage(pageNumber);
     } catch (err) {
       console.error(err);
-      setError("Failed to fetch transaction history.");
+      setError(
+        err?.response?.data?.message ||
+          "Failed to fetch transaction history. Please login as admin again."
+      );
     } finally {
       setLoading(false);
     }
