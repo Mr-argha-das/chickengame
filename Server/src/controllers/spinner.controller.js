@@ -1,4 +1,14 @@
 import Prize from "../models/spinner.model.js";
+import { SpinHistory } from "../models/spinHistory.model.js";
+import { User } from "../models/user.model.js";
+
+const SPIN_COOLDOWN_MS = 60 * 60 * 1000;
+
+const parseRewardAmount = (outcome) => {
+  if (typeof outcome === "number") return outcome;
+  const match = String(outcome || "").match(/\d+/);
+  return match ? Number(match[0]) : 0;
+};
 
 // ✅ Add a new document with full prizes array
 export const addPrizes = async (req, res) => {
@@ -18,6 +28,81 @@ export const getAllPrizes = async (req, res) => {
     const prizes = await Prize.find().sort({ createdAt: -1 });
     res.json(prizes);
   } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+export const claimSpinReward = async (req, res) => {
+  try {
+    const userId = req.user?._id;
+    const { outcome } = req.body;
+    const normalizedOutcome = String(outcome || "").trim();
+    const rewardAmount = parseRewardAmount(normalizedOutcome);
+
+    if (!normalizedOutcome) {
+      return res.status(400).json({ message: "Spin outcome is required" });
+    }
+
+    const latestSpin = await SpinHistory.findOne({ userId }).sort({
+      createdAt: -1,
+    });
+
+    if (
+      latestSpin &&
+      Date.now() - latestSpin.createdAt.getTime() < SPIN_COOLDOWN_MS
+    ) {
+      const remainingMs =
+        SPIN_COOLDOWN_MS - (Date.now() - latestSpin.createdAt.getTime());
+
+      return res.status(429).json({
+        message: "You can spin again after cooldown",
+        remainingMs,
+      });
+    }
+
+    const latestPrizeDoc = await Prize.findOne().sort({ createdAt: -1 });
+    const allowedPrizes = latestPrizeDoc?.prizes?.map((p) => String(p)) || [];
+
+    if (!allowedPrizes.includes(normalizedOutcome)) {
+      return res.status(400).json({ message: "Invalid spin outcome" });
+    }
+
+    const spinHistory = await SpinHistory.create({
+      userId,
+      spinType: "daily",
+      outcome: normalizedOutcome,
+      rewardAmount,
+      addedToWallet: rewardAmount > 0,
+    });
+
+    let walletBalance = null;
+    if (rewardAmount > 0) {
+      const user = await User.findByIdAndUpdate(
+        userId,
+        { $inc: { walletBalance: rewardAmount } },
+        { new: true }
+      ).select("walletBalance");
+      walletBalance = user?.walletBalance ?? null;
+    } else {
+      const user = await User.findById(userId).select("walletBalance");
+      walletBalance = user?.walletBalance ?? null;
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        outcome: normalizedOutcome,
+        rewardAmount,
+        walletBalance,
+        spinHistory,
+      },
+      message:
+        rewardAmount > 0
+          ? `₹${rewardAmount} credited to wallet`
+          : "No wallet credit for this spin",
+    });
+  } catch (err) {
+    console.error("Error claiming spin reward:", err);
     res.status(500).json({ message: err.message });
   }
 };

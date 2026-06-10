@@ -1,7 +1,7 @@
-import axios from "axios";
 import React, { useState, useRef, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { getStoredUser } from "../utils/storage";
+import axios from "axios";
+import axiosInstance from "../utils/axiosInstance";
+import { useBalance } from "../context/BalanceContext";
 
 const API = `${import.meta.env.VITE_API_URL}/api/v1/spinner`;
 
@@ -12,9 +12,7 @@ const Spinner = () => {
   const [cooldownMessage, setCooldownMessage] = useState("");
   const canvasRef = useRef(null);
   const [prizes, setPrizes] = useState([]);
-  const [transactions, setTransactions] = useState([]);
-  const user = getStoredUser();
-  const userId = user?._id;
+  const { loadBalance, setBalance } = useBalance();
 
   // ✅ Fetch prizes from backend
   const fetchPrizes = async () => {
@@ -26,33 +24,19 @@ const Spinner = () => {
     }
   };
 
-  const updateWithdrawalStatus = async (amount) => {
-    try {
-      const response = await axios.put(
-        `${
-          import.meta.env.VITE_API_URL
-        }/api/v1/wallet/update-deposite-transaction-status`,
-        {
-          status: "approved",
-          userId: userId,
-          amount: parseInt(amount),
-        }
-      );
+  const claimSpinReward = async (outcome) => {
+    const response = await axiosInstance.post("/api/v1/spinner/claim", {
+      outcome: String(outcome),
+    });
 
-      if (response.status === 200) {
-        setTransactions((prevTransactions) =>
-          prevTransactions.map((transaction) =>
-            transaction._id === transactionId
-              ? { ...transaction, status }
-              : transaction
-          )
-        );
-      } else {
-        console.error("Failed to update status.");
-      }
-    } catch (error) {
-      console.error("Error updating status:", error);
+    const walletBalance = response.data?.data?.walletBalance;
+    if (Number.isFinite(Number(walletBalance))) {
+      setBalance(Number(walletBalance));
+    } else {
+      loadBalance();
     }
+
+    return response.data;
   };
 
   useEffect(() => {
@@ -123,7 +107,6 @@ const Spinner = () => {
 
     ctx.restore();
   };
-  const navigate = useNavigate();
   const spinWheel = () => {
     if (isSpinning || !prizes.length) return;
 
@@ -134,16 +117,12 @@ const Spinner = () => {
       return; // still in cooldown
     }
 
-    // ✅ Save new spin time
-    localStorage.setItem("lastSpinTime", now);
-
     setIsSpinning(true);
-    const finalRotation = getRandomRotation();
     let currentRotation = rotation;
     let speed = 30;
     let startTime = null;
 
-    const animate = (timestamp) => {
+    const animate = async (timestamp) => {
       if (!startTime) startTime = timestamp;
       const elapsed = timestamp - startTime;
 
@@ -157,16 +136,26 @@ const Spinner = () => {
       } else {
         const prize = getWinningSegment(currentRotation);
 
-        if (prize && prize !== "LOSE") {
-          updateWithdrawalStatus(prize);
+        try {
+          const data = await claimSpinReward(prize);
+          localStorage.setItem("lastSpinTime", Date.now());
+          setResultMessage(
+            data?.data?.rewardAmount > 0
+              ? `🎉 You won ₹${data.data.rewardAmount}. Added to wallet.`
+              : `Result: ${prize}`
+          );
+          setTimeout(() => {
+            window.location.href = "/";
+          }, 2000);
+        } catch (error) {
+          console.error("Error claiming spin reward:", error);
+          setResultMessage(
+            error?.response?.data?.message ||
+              "Spin reward credit nahi hua. Please try again."
+          );
+        } finally {
+          setIsSpinning(false);
         }
-
-        setTimeout(() => {
-          window.location.href = "/";
-        }, 2000);
-
-        setResultMessage(`🎉 You won: ${prize}`);
-        setIsSpinning(false);
       }
     };
 
